@@ -7,21 +7,22 @@ import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.example.ecommerce.auth.AppUser;
+import com.example.ecommerce.auth.AppUserRepository;
+import com.example.ecommerce.auth.Role;
 import com.example.ecommerce.product.Category;
 import com.example.ecommerce.product.Product;
-import com.example.ecommerce.product.ProductRepository;
+import com.example.ecommerce.product.ProductService;
 
 @Configuration
 public class DataSeeder {
 
     @Bean
-    CommandLineRunner seedCatalog(ProductRepository productRepository) {
+    CommandLineRunner seedCatalog(ProductService productService, AppUserRepository appUserRepository,
+            PasswordEncoder passwordEncoder) {
         return args -> {
-            if (productRepository.count() > 0) {
-                return;
-            }
-
             List<Product> products = List.of(
                     product("NMX-1001", "Nimbus Trail Runner", "nimbus-trail-runner", "AeroStep",
                             "Weather-ready running shoes with a responsive sole and recycled knit upper.",
@@ -57,8 +58,30 @@ public class DataSeeder {
                             new BigDecimal("2199.00"), 7, 4.2, false)
             );
 
-            productRepository.saveAll(products);
+            productService.seedProductsIfEmpty(products);
+            seedUsers(appUserRepository, passwordEncoder);
         };
+    }
+
+    private void seedUsers(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder) {
+        seedUser(appUserRepository, passwordEncoder, "Admin", "admin@commercecraft.test", "admin123", Role.ADMIN);
+        seedUser(appUserRepository, passwordEncoder, "Customer", "customer@commercecraft.test", "customer123",
+                Role.CUSTOMER);
+    }
+
+    private void seedUser(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, String name,
+            String email, String password, Role role) {
+        if (appUserRepository.existsByEmail(email)) {
+            return;
+        }
+
+        AppUser user = new AppUser();
+        user.setName(name);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRole(role);
+        user.setCreatedAt(Instant.now());
+        appUserRepository.save(user);
     }
 
     private Product product(String sku, String name, String slug, String brand, String description,

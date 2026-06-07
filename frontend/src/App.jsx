@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   BarChart3,
@@ -14,7 +14,7 @@ import {
   Trash2,
   Truck
 } from 'lucide-react';
-import { api } from './api';
+import { api, clearAuth, getStoredAuth, storeAuth } from './api';
 import './styles.css';
 
 const CART_ID = 'portfolio-demo-cart';
@@ -32,18 +32,36 @@ function App() {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [auth, setAuth] = useState(getStoredAuth());
+  const [authMode, setAuthMode] = useState('login');
 
   useEffect(() => {
-    Promise.all([api.categories(), api.featured(), api.cart(CART_ID), api.dashboard()])
-      .then(([categoryData, featuredData, cartData, dashboardData]) => {
+    Promise.all([api.categories(), api.featured()])
+      .then(([categoryData, featuredData]) => {
         setCategories(categoryData);
         setFeatured(featuredData);
-        setCart(cartData);
-        setDashboard(dashboardData);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!auth.token) {
+      setCart({ items: [], itemCount: 0, subtotal: 0 });
+      setDashboard(null);
+      return;
+    }
+
+    api.cart(CART_ID)
+      .then(setCart)
+      .catch((err) => setError(err.message));
+
+    if (auth.user?.role === 'ADMIN') {
+      api.dashboard()
+        .then(setDashboard)
+        .catch((err) => setError(err.message));
+    }
+  }, [auth]);
 
   useEffect(() => {
     api.products({ category: activeCategory, query })
@@ -56,16 +74,29 @@ function App() {
 
   async function addToCart(productId) {
     setError('');
+    if (!auth.token) {
+      setError('Please login before adding items to cart.');
+      return;
+    }
     setCart(await api.addToCart(CART_ID, productId, 1));
   }
 
   async function updateQuantity(productId, quantity) {
     setError('');
+    if (!auth.token) {
+      setError('Please login to update cart items.');
+      return;
+    }
     setCart(await api.updateCartItem(CART_ID, productId, quantity));
   }
 
   async function checkout(event) {
     event.preventDefault();
+    setError('');
+    if (!auth.token) {
+      setError('Please login before checkout.');
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const payload = {
       cartId: CART_ID,
@@ -75,7 +106,27 @@ function App() {
     const placedOrder = await api.checkout(payload);
     setOrder(placedOrder);
     setCart(await api.cart(CART_ID));
-    setDashboard(await api.dashboard());
+    if (auth.user?.role === 'ADMIN') {
+      setDashboard(await api.dashboard());
+    }
+  }
+
+  async function submitAuth(event) {
+    event.preventDefault();
+    setError('');
+    const form = new FormData(event.currentTarget);
+    const payload = Object.fromEntries(form.entries());
+    const response = authMode === 'login'
+      ? await api.login(payload)
+      : await api.register(payload);
+    storeAuth(response);
+    setAuth(getStoredAuth());
+  }
+
+  function logout() {
+    clearAuth();
+    setAuth({ token: null, user: null });
+    setOrder(null);
   }
 
   return (
@@ -85,11 +136,38 @@ function App() {
           <ShoppingBag size={22} />
           <span>CommerceCraft</span>
         </div>
-        <button className="cart-pill" onClick={() => setCheckoutOpen(true)}>
-          <ShoppingBag size={18} />
-          <span>{cart.itemCount} items</span>
-        </button>
+        <div className="nav-actions">
+          {auth.user ? (
+            <button className="user-pill" onClick={logout}>
+              {auth.user.name} · Logout
+            </button>
+          ) : null}
+          <button className="cart-pill" onClick={() => setCheckoutOpen(true)}>
+            <ShoppingBag size={18} />
+            <span>{cart.itemCount} items</span>
+          </button>
+        </div>
       </nav>
+
+      {!auth.user ? (
+        <section className="auth-panel">
+          <div>
+            <p className="eyebrow">Secure demo</p>
+            <h2>Login to use cart and checkout</h2>
+            <p className="muted">Try customer: customer@commercecraft.test / customer123</p>
+            <p className="muted">Try admin: admin@commercecraft.test / admin123</p>
+          </div>
+          <form onSubmit={submitAuth}>
+            {authMode === 'register' ? <input name="name" placeholder="Name" required /> : null}
+            <input name="email" placeholder="Email" type="email" required />
+            <input name="password" placeholder="Password" type="password" required minLength={6} />
+            <button>{authMode === 'login' ? 'Login' : 'Create account'}</button>
+            <button type="button" className="link-button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
+              {authMode === 'login' ? 'Need an account?' : 'Already have an account?'}
+            </button>
+          </form>
+        </section>
+      ) : null}
 
       <section className="hero">
         <div className="hero-copy">
