@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.ecommerce.auth.AppUser;
 import com.example.ecommerce.auth.AppUserRepository;
 import com.example.ecommerce.auth.Role;
+import com.example.ecommerce.home.HomeSlide;
+import com.example.ecommerce.home.HomeSlideService;
 import com.example.ecommerce.product.Category;
 import com.example.ecommerce.product.Product;
 import com.example.ecommerce.product.ProductService;
@@ -20,7 +22,8 @@ import com.example.ecommerce.product.ProductService;
 public class DataSeeder {
 
     @Bean
-    CommandLineRunner seedCatalog(ProductService productService, AppUserRepository appUserRepository,
+    CommandLineRunner seedCatalog(ProductService productService, HomeSlideService homeSlideService,
+            AppUserRepository appUserRepository,
             PasswordEncoder passwordEncoder) {
         return args -> {
             List<Product> products = List.of(
@@ -59,6 +62,20 @@ public class DataSeeder {
             );
 
             productService.seedProductsIfEmpty(products);
+            homeSlideService.seedSlidesIfEmpty(List.of(
+                    slide("New Season Essentials",
+                            "Shop featured footwear, home upgrades, and daily carry picks in one place.",
+                            "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1400&q=80",
+                            1),
+                    slide("Desk Setup Refresh",
+                            "Lighting, audio, and creator tools for cleaner work sessions.",
+                            "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1400&q=80",
+                            2),
+                    slide("Weekend Kitchen Kit",
+                            "Coffee gear and compact home products selected for everyday use.",
+                            "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1400&q=80",
+                            3)
+            ));
             seedUsers(appUserRepository, passwordEncoder);
         };
     }
@@ -94,11 +111,22 @@ public class DataSeeder {
         product.setDescription(description);
         product.setCategory(category);
         product.setImageUrl(imageUrl);
+        product.setImageUrls(List.of(imageUrl));
         product.setPrice(price);
         product.setStock(stock);
         product.setRating(rating);
         product.setFeatured(featured);
         product.setCreatedAt(Instant.now());
         return product;
+    }
+
+    private HomeSlide slide(String title, String subtitle, String imageUrl, int position) {
+        HomeSlide slide = new HomeSlide();
+        slide.setTitle(title);
+        slide.setSubtitle(subtitle);
+        slide.setImageUrl(imageUrl);
+        slide.setPosition(position);
+        slide.setActive(true);
+        return slide;
     }
 }

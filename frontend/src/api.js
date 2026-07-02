@@ -28,9 +28,10 @@ export function clearAuth() {
 
 async function request(path, options = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {})
     },
@@ -70,6 +71,16 @@ export const api = {
     return request(`/products${suffix}`);
   },
   featured: () => request('/products/featured'),
+  slides: () => request('/slides'),
+  adminSlides: () => request('/slides/admin'),
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request('/uploads', {
+      method: 'POST',
+      body: formData
+    });
+  },
   cart: (cartId) => request(`/carts/${cartId}`),
   addToCart: (cartId, productId, quantity = 1) =>
     request(`/carts/${cartId}/items`, {
@@ -85,6 +96,41 @@ export const api = {
     request('/orders', {
       method: 'POST',
       body: JSON.stringify(payload)
+    }),
+  myOrders: () => request('/orders/me'),
+  orders: () => request('/orders'),
+  updateOrderStatus: (orderId, status) =>
+    request(`/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    }),
+  createProduct: (payload) =>
+    request('/products', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  updateProduct: (productId, payload) =>
+    request(`/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
+  deleteProduct: (productId) =>
+    request(`/products/${productId}`, {
+      method: 'DELETE'
+    }),
+  createSlide: (payload) =>
+    request('/slides', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  updateSlide: (slideId, payload) =>
+    request(`/slides/${slideId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
+  deleteSlide: (slideId) =>
+    request(`/slides/${slideId}`, {
+      method: 'DELETE'
     }),
   dashboard: () => request('/dashboard/summary')
 };

@@ -3,6 +3,7 @@ package com.example.ecommerce.order;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.ecommerce.cart.CartDto;
 import com.example.ecommerce.cart.CartItemDto;
 import com.example.ecommerce.cart.CartService;
+import com.example.ecommerce.common.ResourceNotFoundException;
 
 @Service
 public class OrderService {
@@ -62,5 +64,20 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
         cartService.clear(request.cartId());
         return OrderDto.from(savedOrder);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDto> getCustomerOrders(String email) {
+        return orderRepository.findByCustomer_EmailIgnoreCaseOrderByPlacedAtDesc(email).stream()
+                .map(OrderDto::from)
+                .toList();
+    }
+
+    @Transactional
+    public OrderDto updateStatus(Long id, OrderStatus status) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+        order.setStatus(status);
+        return OrderDto.from(orderRepository.save(order));
     }
 }

@@ -4,7 +4,10 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,8 +32,18 @@ public class OrderController {
                 .toList();
     }
 
+    @GetMapping("/me")
+    public List<OrderDto> myOrders(Authentication authentication) {
+        return orderService.getCustomerOrders(authentication.getName());
+    }
+
     @PostMapping
     public OrderDto checkout(@Valid @RequestBody CheckoutRequest request) {
         return orderService.checkout(request);
+    }
+
+    @PatchMapping("/{id}/status")
+    public OrderDto updateStatus(@PathVariable Long id, @Valid @RequestBody OrderStatusUpdateRequest request) {
+        return orderService.updateStatus(id, request.status());
     }
 }

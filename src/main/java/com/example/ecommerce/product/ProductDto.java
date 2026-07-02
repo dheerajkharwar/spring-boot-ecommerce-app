@@ -1,6 +1,7 @@
 package com.example.ecommerce.product;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record ProductDto(
         Long id,
@@ -11,6 +12,7 @@ public record ProductDto(
         String description,
         Category category,
         String imageUrl,
+        List<String> imageUrls,
         BigDecimal price,
         int stock,
         double rating,
@@ -27,6 +29,7 @@ public record ProductDto(
                 product.getDescription(),
                 product.getCategory(),
                 product.getImageUrl(),
+                product.getImageUrls().isEmpty() ? List.of(product.getImageUrl()) : product.getImageUrls(),
                 product.getPrice(),
                 product.getStock(),
                 product.getRating(),
